@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { checkCoupon, redeemCoupon } from "@/lib/coupons";
-import { generateOrderNumber } from "@/lib/utils";
+import { generateOrderNumber, getAppUrl } from "@/lib/utils";
 import { createPaymentSession } from "@/lib/payment";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -149,8 +149,8 @@ export async function POST(req: Request) {
       orderNumber: order.orderNumber,
       amount: total,
       customerEmail: shipping.email,
-      successUrl: `${process.env.NEXT_PUBLIC_APP_URL}/checkout/success`,
-      cancelUrl: `${process.env.NEXT_PUBLIC_APP_URL}/checkout`,
+      successUrl: `${getAppUrl()}/checkout/success`,
+      cancelUrl: `${getAppUrl()}/checkout`,
     });
 
     await prisma.order.update({ where: { id: order.id }, data: { paymentRef: paymentSession.providerRef } });

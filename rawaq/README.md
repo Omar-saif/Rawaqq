@@ -36,35 +36,60 @@ brand's collar-and-crown mark. PostgreSQL via Prisma, deployed on Vercel.
 - Vercel Blob for image uploads (banners & product photos)
 - Zustand for the client-side cart
 
-## Local setup
+## Deploying to Vercel (plug and play — no CLI required)
+
+1. **Push this project to GitHub**, then in Vercel click **Add New → Project**
+   and import that repo.
+2. **Add a database.** In your new Vercel project: **Storage → Marketplace
+   Database Storage → Neon (Postgres) → Install**. Follow the prompts (any
+   region/free plan is fine) and connect it to this project. Vercel injects
+   `DATABASE_URL` automatically — you don't type anything.
+3. **Add image storage.** Same tab: **Storage → Create Database → Blob →
+   Install**, connect it to this project. This injects
+   `BLOB_READ_WRITE_TOKEN` automatically, which is what makes banner/product
+   image uploads work from the admin dashboard.
+4. **Set two environment variables** (Project → Settings → Environment
+   Variables — this is the only manual step):
+   - `NEXTAUTH_SECRET` — any long random string (e.g. generate one at
+     [randomkeygen.com](https://randomkeygen.com) or run
+     `openssl rand -base64 32` if you have a terminal handy).
+   - `SETUP_SECRET` — any password you'll remember, used once to create your
+     admin account.
+5. **Deploy.** The build step runs `prisma db push` automatically, so your
+   database tables are created with no migration command to run.
+6. **Visit `https://your-project.vercel.app/setup`** once. Enter the
+   `SETUP_SECRET` you chose, your name, email, and a password — this creates
+   your admin login and drops in one sample product and coupon so the store
+   isn't empty. That page permanently disables itself after first use.
+7. **Sign in at `/login`** with the account you just created, then go to
+   `/admin` to upload your real banner, add products, and set up coupons.
+
+That's the whole path from zero to a working store: two integrations, two
+env vars, one setup form.
+
+> **Note on schema changes:** to stay zero-config, the build command runs
+> `prisma db push` on every deploy, which syncs your database tables to
+> match `prisma/schema.prisma` automatically. This is ideal while you're
+> getting started. Once the store is live with real customer data, switch to
+> `prisma migrate deploy` in the build command instead (see the
+> [Prisma migrate docs](https://www.prisma.io/docs/orm/prisma-migrate)) so
+> schema changes are reviewed rather than applied automatically.
+
+## Local development (optional)
+
+Only needed if you want to run this on your own machine instead of just
+using the deployed site:
 
 ```bash
 npm install
 cp .env.example .env      # fill in DATABASE_URL at minimum
 npx prisma db push        # create tables
-npm run db:seed           # creates an admin login + one sample product
 npm run dev
 ```
 
-Sign in at `/login` with the seeded admin (`admin@rawaq.sa` / `ChangeMe123!`
-by default — override via `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` in `.env`
-before seeding, and change the password after first login by seeding again
-with a new value or adding a "change password" flow later).
-
-## Deploying to Vercel
-
-1. Push this project to a GitHub repo and import it in Vercel.
-2. Add a Postgres database: Vercel dashboard → **Storage → Postgres** (or bring
-   your own, e.g. Neon/Supabase) and copy its connection string into
-   `DATABASE_URL`.
-3. Add a Blob store: **Storage → Blob**, then copy `BLOB_READ_WRITE_TOKEN` into
-   your project's environment variables. This is what makes banner/product
-   image uploads work in the admin dashboard.
-4. Set `NEXTAUTH_SECRET` (`openssl rand -base64 32`), `NEXTAUTH_URL`, and
-   `NEXT_PUBLIC_APP_URL` to your production domain.
-5. Deploy. Then run the seed once against production (e.g. via `vercel env pull`
-   + `npm run db:seed` locally pointed at the prod `DATABASE_URL`, or a one-off
-   script) to create your first admin login.
+Then visit `http://localhost:3000/setup` to create your local admin account,
+same as step 6 above. (A CLI seed script also exists at `npm run db:seed` if
+you prefer that instead of the `/setup` page.)
 
 ## Payments: "SSL ecommerce" + Cash on Delivery
 
