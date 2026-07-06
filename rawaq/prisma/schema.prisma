@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Auth / Users ----------
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  passwordHash  String?
+  role          Role      @default(CUSTOMER)
+  createdAt     DateTime  @default(now())
+  orders        Order[]
+  addresses     Address[]
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName  String
+  phone     String
+  line1     String
+  line2     String?
+  city      String
+  country   String  @default("SA")
+  postal    String?
+  isDefault Boolean @default(false)
+}
+
+// ---------- Catalog ----------
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  products Product[]
+}
+
+model Product {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  description  String
+  categoryId   String?
+  category     Category? @relation(fields: [categoryId], references: [id])
+  basePrice    Int       // stored in halalas/cents to avoid float errors
+  compareAt    Int?      // strike-through price, optional
+  images       String[]  // array of image URLs
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  variants     Variant[]
+  orderItems   OrderItem[]
+}
+
+// A variant is a purchasable SKU: e.g. Size M / Color Navy
+model Variant {
+  id         String      @id @default(cuid())
+  productId  String
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku        String      @unique
+  size       String?
+  color      String?
+  price      Int?        // overrides product.basePrice when set
+  stock      Int         @default(0)
+  lowStockAt Int         @default(3)
+  orderItems OrderItem[]
+
+  @@index([productId])
+}
+
+// ---------- Banners (homepage / promo slots) ----------
+
+model Banner {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String?
+  imageUrl  String
+  linkUrl   String?
+  ctaLabel  String?
+  position  Int      @default(0) // display order
+  active    Boolean  @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+// ---------- Coupons ----------
+
+enum DiscountType {
+  PERCENT
+  FIXED
+  FREE_SHIPPING
+}
+
+model Coupon {
+  id               String       @id @default(cuid())
+  code             String       @unique
+  type             DiscountType
+  value            Int          // percent (0-100) or fixed amount in halalas; ignored for FREE_SHIPPING
+  minSubtotal      Int?         // minimum order subtotal (halalas) required
+  maxDiscount      Int?         // cap for PERCENT discounts, in halalas
+  usageLimit       Int?         // total redemptions allowed, null = unlimited
+  usageLimitPerUser Int?        // per customer, null = unlimited
+  timesUsed        Int          @default(0)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  active           Boolean      @default(true)
+  applicableSkus   String[]     // if non-empty, restricts to these Variant SKUs
+  applicableCats   String[]     // if non-empty, restricts to these Category ids
+  createdAt        DateTime     @default(now())
+  redemptions      CouponRedemption[]
+}
+
+model CouponRedemption {
+  id        String   @id @default(cuid())
+  couponId  String
+  coupon    Coupon   @relation(fields: [couponId], references: [id])
+  orderId   String   @unique
+  order     Order    @relation(fields: [orderId], references: [id])
+  userEmail String
+  createdAt DateTime @default(now())
+}
+
+// ---------- Orders ----------
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  COD_CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  COD
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  guestEmail      String?
+  guestName       String?
+
+  shippingName    String
+  shippingPhone   String
+  shippingLine1   String
+  shippingLine2   String?
+  shippingCity    String
+  shippingCountry String        @default("SA")
+  shippingPostal  String?
+
+  subtotal        Int
+  discountTotal   Int           @default(0)
+  shippingFee     Int           @default(0)
+  total           Int
+
+  couponCode      String?
+  paymentMethod   PaymentMethod
+  status          OrderStatus   @default(PENDING_PAYMENT)
+  paymentRef      String?       // gateway transaction id
+
+  items           OrderItem[]
+  redemption      CouponRedemption?
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model OrderItem {
+  id         String   @id @default(cuid())
+  orderId    String
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  variantId  String
+  variant    Variant  @relation(fields: [variantId], references: [id])
+  nameSnapshot String
+  skuSnapshot  String
+  unitPrice  Int
+  quantity   Int
+}

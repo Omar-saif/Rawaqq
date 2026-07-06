@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  h1, h2, h3 {
+    @apply font-display;
+  }
+  ::selection {
+    background: #C9A227;
+    color: #0A1730;
+  }
+}
+
+@layer components {
+  /* The signature element: an arch frame, echoing "Rawaq" (colonnade/arcade).
+     Used sparingly on the hero banner and category tiles only. */
+  .arch-frame {
+    border-radius: 260px 260px 6px 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .arch-frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(251, 250, 247, 0.35);
+    pointer-events: none;
+  }
+
+  .hairline {
+    @apply border-line;
+  }
+
+  .btn-primary {
+    @apply bg-navy text-paper px-6 py-3 text-sm tracking-wide uppercase hover:bg-ink transition-colors disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply border border-navy text-navy px-6 py-3 text-sm tracking-wide uppercase hover:bg-navy hover:text-paper transition-colors disabled:opacity-40;
+  }
+  .btn-gold {
+    @apply bg-sand text-ink px-6 py-3 text-sm tracking-wide uppercase hover:bg-sand2 transition-colors;
+  }
+  .label-eyebrow {
+    @apply text-xs tracking-[0.2em] uppercase text-sand;
+  }
+  .input-field {
+    @apply w-full border border-line bg-paper px-4 py-3 text-sm focus:outline-none focus:border-navy transition-colors;
+  }
+}
